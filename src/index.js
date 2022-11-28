@@ -1,5 +1,8 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
+const isDev = require('electron-is-dev');
 const path = require('path');
+
+const backendApp = require('./App');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -8,19 +11,33 @@ if (require('electron-squirrel-startup')) {
 
 const createWindow = () => {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+  let mainWindow = new BrowserWindow({
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      devTools: isDev,
     },
   });
 
-  // and load the index.html of the app.
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.maximize();
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  if(isDev) {
+    mainWindow.loadURL("http://127.0.0.1:3000#/");
+  } else {
+    mainWindow.loadURL(`file://${path.join(__dirname, '../index.html#')}`);
+    mainWindow.removeMenu();
+  }
+  mainWindow.on('closed', function () {
+    backendApp.cleanup();
+    mainWindow = null;
+  });
+  mainWindow.webContents.once('did-finish-load', () => {
+    backendApp.setWebContents(mainWindow.webContents);
+    backendApp.initApp();
+  });
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 };
 
 // This method will be called when Electron has finished
@@ -35,6 +52,18 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  console.log('quitting');
+  backendApp.cleanup(mainWindow.webContents);
+});
+
+ipcMain.handle('app-info', async (event) => {
+  return {
+    appName: app.getName(),
+    appVersion: app.getVersion(),
+  };
 });
 
 app.on('activate', () => {
