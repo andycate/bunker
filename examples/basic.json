@@ -1,0 +1,38 @@
+{
+  "version": "0.1.0",
+  "sources": {
+    "source1": {
+      "type": "udp",
+      "host_interface": "0.0.0.0",
+      "host_port": 42069,
+      "dest_ip": "10.0.0.42",
+      "dest_port": 42069,
+      "connect_by_default": true
+    }
+  },
+  "processors": {
+    "proc1": {
+      "type": "packet_to_telemetry",
+      "source": "source1",
+      "packet_profile": {
+        "0": [
+          ["telem1", "float"],
+          ["telem2", "uint8"]
+        ],
+        "1": [
+          ["telem3", "int32"],
+          ["telem4", "float"]
+        ]
+      }
+    }
+  },
+  "windows": {
+    "Main": {
+      "type": "grid",
+      "layout": "3x3",
+      "widgets": [
+        { "type": "graph", "values": ["telem1", "telem4"] }
+      ]
+    }
+  }
+}
